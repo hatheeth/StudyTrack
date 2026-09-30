@@ -1,0 +1,1 @@
+StudyTrack, a student workload tracker for managing courses, assignments, and study sessions. Users can create an account, add and edit records, set assignment deadlines and statuses, and log study time. The dashboard summarizes courses, open assignments, and total minutes studied.
