@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StudyTrack</title>
+<style>
+  :root {
+    font-family: system-ui, sans-serif;
+    color: #18352c;
+    background: #f4f6f1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  header, main, .notice {
+    max-width: 1100px;
+    margin: auto;
+    padding: 24px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  h1 { margin: 4px 0; font-size: 32px; letter-spacing: -1px; }
+  h2 { margin: 0 0 18px; }
+  h3 { margin: 10px 0; overflow-wrap: anywhere; }
+  p { line-height: 1.6; }
+  .muted, article p { color: #52665e; }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  button, input, select, textarea { font: inherit; }
+  button {
+    cursor: pointer;
+    border: 1px solid #cbd6ce;
+    background: white;
+    color: #18352c;
+    padding: 10px 15px;
+    border-radius: 9px;
+  }
+  button:hover { background: #e8eee8; }
+  button:disabled { opacity: .55; cursor: wait; }
+  .primary, button[aria-pressed="true"] {
+    background: #1d634b;
+    border-color: #1d634b;
+    color: white;
+  }
+  .primary:hover { background: #164c3a; }
+  .danger { color: #a33434; }
+  .error { color: #a33434 !important; }
+  .notice { padding-top: 0; padding-bottom: 0; min-height: 24px; }
+  .panel, article {
+    background: white;
+    border: 1px solid #dce4db;
+    border-radius: 16px;
+    padding: 24px;
+  }
+  #authPanel { max-width: 450px; margin: 30px auto; }
+  label { display: block; margin: 15px 0; font-size: 14px; }
+  input, select, textarea {
+    display: block;
+    width: 100%;
+    margin-top: 7px;
+    padding: 11px;
+    border: 1px solid #cbd6ce;
+    border-radius: 8px;
+    background: white;
+    color: #18352c;
+  }
+  textarea { min-height: 95px; resize: vertical; }
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid #81b59d;
+    outline-offset: 1px;
+  }
+  .actions, nav, .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  .toolbar { justify-content: space-between; margin: 24px 0; }
+  .toolbar h2 { margin: 0; }
+  #search { width: min(100%, 280px); margin: 0; }
+  #stats, #list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  #stats { margin-bottom: 26px; }
+  .stat { padding: 18px; background: #e6eee3; border-radius: 12px; }
+  .stat strong { display: block; font-size: 27px; margin-bottom: 3px; }
+  article { display: flex; flex-direction: column; }
+  article .actions { margin-top: auto; padding-top: 18px; }
+  .badge {
+    display: inline-block;
+    align-self: flex-start;
+    background: #e8efe5;
+    padding: 4px 9px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+  .notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 45px;
+    border: 1px dashed #b5c6b6;
+    border-radius: 14px;
+  }
+  dialog {
+    width: min(520px, 94vw);
+    max-height: 90vh;
+    overflow: auto;
+    border: 0;
+    border-radius: 16px;
+    padding: 26px;
+    color: #18352c;
+  }
+  dialog::backdrop { background: #10291d88; }
+  footer { text-align: center; padding: 30px; color: #66776d; font-size: 13px; }
+  [hidden] { display: none !important; }
+  @media(max-width: 750px) {
+    #list { grid-template-columns: 1fr; }
+    #stats { gap: 8px; }
+    .stat { padding: 12px; font-size: 12px; }
+    header, main { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="eyebrow">Your student workspace</div>
+    <h1>StudyTrack<span style="color:#79a560">.</span></h1>
+    <div class="muted">Less juggling. More progress.</div>
+  </div>
+  <button id="signout" hidden>Sign out</button>
+</header>
+
+<div class="notice">
+  <p id="notice" role="status" aria-live="polite"></p>
+</div>
+
+<main>
+  <section id="authPanel" class="panel">
+    <h2>Welcome back</h2>
+    <p class="muted">Keep your courses, deadlines, and study time together.</p>
+    <form id="authForm">
+      <label>Email
+        <input id="email" type="email" autocomplete="email" required>
+      </label>
+      <label>Password
+        <input id="password" type="password"
+          autocomplete="current-password" minlength="8" required>
+      </label>
+      <div class="actions">
+        <button class="primary" type="submit" value="signin">Sign in</button>
+        <button type="submit" value="signup">Create account</button>
+      </div>
+    </form>
+  </section>
+
+  <section id="app" hidden>
+    <div id="stats"></div>
+
+    <nav id="tabs" aria-label="Record types">
+      <button data-table="courses" aria-pressed="true">Courses</button>
+      <button data-table="assignments" aria-pressed="false">Assignments</button>
+      <button data-table="study_sessions" aria-pressed="false">Study sessions</button>
+    </nav>
+
+    <div class="toolbar">
+      <h2 id="heading">Courses</h2>
+      <input id="search" type="search" placeholder="Search records…"
+        aria-label="Search records">
+      <div class="actions">
+        <button id="refresh">Refresh</button>
+        <button id="add" class="primary">+ Add course</button>
+      </div>
+    </div>
+
+    <div id="list"></div>
+  </section>
+</main>
+
+<dialog id="modal">
+  <form id="recordForm">
+    <h2 id="formTitle"></h2>
+    <div id="fields"></div>
+    <p id="formError" class="error" role="alert"></p>
+    <div class="actions">
+      <button id="save" type="submit" class="primary">Save</button>
+      <button id="cancel" type="button">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<footer>StudyTrack</footer>
+
+<script>
+
+const PROJECT_URL = "https://czcsuqobqnomnlybyepj.supabase.co";
+const PUBLISHABLE_KEY = "sb_publishable_xHCbKM3vERu4Bzwvq5jLsg_W1ZfD4f2";
+
+const $ = id => document.getElementById(id);
+const SESSION_KEY = "studytrack-session:" + PROJECT_URL;
+const tables = ["courses", "assignments", "study_sessions"];
+const titles = {
+  courses: "Courses", assignments: "Assignments",
+  study_sessions: "Study sessions"
+};
+const singular = {
+  courses: "course", assignments: "assignment",
+  study_sessions: "study session"
+};
+const statusNames = { todo: "To do", doing: "In progress", done: "Done" };
+const emptyDB = () => ({ courses: [], assignments: [], study_sessions: [] });
+
+let db = emptyDB();
+let active = "courses";
+let editing = null;
+let editingTable = "courses";
+let session = null;
+let refreshJob = null;
+
+try {
+  session = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
+} catch {}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
+       '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function notice(text, error = false) {
+  $("notice").textContent = text;
+  $("notice").className = error ? "error" : "";
+}
+
+function today() {
+  const date = new Date();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString().slice(0, 10);
+}
+
+function setSession(value) {
+  session = value;
+  if (session) {
+    session.expires_at ||= Math.floor(Date.now() / 1000)
+      + Number(session.expires_in || 3600);
+  }
+
+  try {
+    if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch {}
+
+  $("authPanel").hidden = !!session;
+  $("app").hidden = !session;
+  $("signout").hidden = !session;
+
+  if (!session) {
+    db = emptyDB();
+    $("list").replaceChildren();
+    $("password").value = "";
+  }
+}
+
+async function http(path, method = "GET", body, token) {
+  const headers = {
+    apikey: PUBLISHABLE_KEY,
+    "Content-Type": "application/json"
+  };
+  if (token) headers.Authorization = "Bearer " + token;
+  if (path.startsWith("/rest/v1/")) {
+    headers.Prefer = "return=representation";
+  }
+
+  const response = await fetch(PROJECT_URL.replace(/\/$/, "") + path, {
+    method, headers,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+
+  const text = await response.text();
+  let result = null;
+  try { result = text ? JSON.parse(text) : null; }
+  catch { result = { message: text }; }
+
+  if (!response.ok) {
+    throw new Error(
+      result?.msg || result?.message || result?.error_description
+      || result?.error || `Request failed (${response.status}).`
+    );
+  }
+  return result;
+}
+
+async function renewSession() {
+  if (!session) throw new Error("Please sign in.");
+  if (session.expires_at * 1000 > Date.now() + 60000) return;
+
+ 
+  if (!refreshJob) {
+    refreshJob = http("/auth/v1/token?grant_type=refresh_token", "POST", {
+      refresh_token: session.refresh_token
+    })
+      .then(setSession)
+      .catch(error => {
+        setSession(null);
+        throw new Error("Please sign in again. " + error.message);
+      })
+      .finally(() => { refreshJob = null; });
+  }
+  await refreshJob;
+}
+
+async function api(path, method = "GET", body, authenticated = false) {
+  if (authenticated) await renewSession();
+  return http(path, method, body,
+    authenticated ? session.access_token : undefined);
+}
+
+async function readAll(table) {
+  const records = [];
+  for (let offset = 0; ; offset += 500) {
+    const page = await api(
+      `/rest/v1/${table}?select=*&order=created_at.desc,id.asc`
+      + `&limit=500&offset=${offset}`,
+      "GET", undefined, true
+    );
+    records.push(...page);
+    if (page.length < 500) return records;
+  }
+}
+
+async function load() {
+  $("refresh").disabled = true;
+  notice("Loading your records…");
+  try {
+    const results = await Promise.all(tables.map(readAll));
+    if (!session) return;
+    tables.forEach((table, i) => { db[table] = results[i]; });
+    render();
+    notice("Connected to PostgreSQL. Changes are saved immediately.");
+  } finally {
+    $("refresh").disabled = false;
+  }
+}
+
+function courseName(id) {
+  return db.courses.find(row => row.id === id)?.name || "";
+}
+
+function assignmentName(id) {
+  return db.assignments.find(row => row.id === id)?.title || "";
+}
+
+function render() {
+  const outstanding = db.assignments.filter(row => row.status !== "done").length;
+  const minutes = db.study_sessions.reduce((sum, row) => sum + row.minutes, 0);
+
+  $("stats").innerHTML = `
+    <div class="stat"><strong>${db.courses.length}</strong>Courses</div>
+    <div class="stat"><strong>${outstanding}</strong>Open assignments</div>
+    <div class="stat"><strong>${minutes}</strong>Minutes studied</div>`;
+
+  $("heading").textContent = titles[active];
+  $("add").textContent = "+ Add " + singular[active];
+
+  document.querySelectorAll("[data-table]").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.table === active));
+  });
+
+  const query = $("search").value.trim().toLowerCase();
+  const records = db[active].filter(row =>
+    [row.name, row.title, row.notes, courseName(row.course_id),
+      assignmentName(row.assignment_id)].join(" ").toLowerCase().includes(query)
+  );
+
+  $("list").innerHTML = records.length ? records.map(row => {
+    let title, detail, extra = "";
+
+    if (active === "courses") {
+      title = row.name;
+      const count = db.assignments.filter(a => a.course_id === row.id).length;
+      detail = `${count} assignment${count === 1 ? "" : "s"}`;
+    } else if (active === "assignments") {
+      title = row.title;
+      detail = `${courseName(row.course_id)} · Due: ${row.due_on || "Not set"}`;
+      extra = `<span class="badge">${esc(statusNames[row.status])}</span>`;
+    } else {
+      title = assignmentName(row.assignment_id);
+      detail = `${row.studied_on} · ${row.minutes} minutes`;
+      extra = row.notes ? `<p class="notes">${esc(row.notes)}</p>` : "";
+    }
+
+    return `<article>
+      <span class="eyebrow">${esc(singular[active])}</span>
+      <h3>${esc(title)}</h3>
+      <p>${esc(detail)}</p>${extra}
+      <div class="actions">
+        <button data-action="edit" data-id="${esc(row.id)}">Edit</button>
+        <button class="danger" data-action="delete"
+          data-id="${esc(row.id)}">Delete</button>
+      </div>
+    </article>`;
+  }).join("") : `<div class="empty">
+    ${query ? "No matching records." :
+      "Nothing here yet. Add your first " + singular[active] + "."}
+  </div>`;
+}
+
+function input(label, name, type = "text", attributes = "") {
+  return `<label>${label}
+    <input name="${name}" type="${type}" ${attributes}>
+  </label>`;
+}
+
+function select(label, name, options) {
+  return `<label>${label}<select name="${name}" required>
+    ${options.map(option => `<option value="${esc(option.id)}">
+      ${esc(option.name)}
+    </option>`).join("")}
+  </select></label>`;
+}
+
+function openEditor(id) {
+  if (active === "assignments" && !db.courses.length) {
+    return notice("Create a course first.", true);
+  }
+  if (active === "study_sessions" && !db.assignments.length) {
+    return notice("Create an assignment first.", true);
+  }
+
+  editingTable = active;
+  editing = id || null;
+  const row = db[active].find(record => record.id === id);
+
+  $("formTitle").textContent =
+    (editing ? "Edit " : "Add ") + singular[active];
+  $("formError").textContent = "";
+
+  if (active === "courses") {
+    $("fields").innerHTML = input("Course name", "name", "text",
+      'required maxlength="80" placeholder="e.g. Biology"');
+  } else if (active === "assignments") {
+    $("fields").innerHTML =
+      select("Course", "course_id", db.courses) +
+      input("Assignment title", "title", "text", 'required maxlength="120"') +
+      input("Due date", "due_on", "date") +
+      select("Status", "status", Object.entries(statusNames)
+        .map(([id, name]) => ({ id, name })));
+  } else {
+    $("fields").innerHTML =
+      select("Assignment", "assignment_id", db.assignments.map(a => ({
+        id: a.id, name: `${a.title} — ${courseName(a.course_id)}`
+      }))) +
+      input("Date studied", "studied_on", "date",
+        `required value="${today()}"`) +
+      input("Minutes", "minutes", "number",
+        'required min="1" max="600" step="1" value="25"') +
+      `<label>Notes
+        <textarea name="notes" maxlength="500"
+          placeholder="What did you work on?"></textarea>
+      </label>`;
+  }
+
+  if (row) {
+    Object.entries(row).forEach(([key, value]) => {
+      const control = $("recordForm").elements.namedItem(key);
+      if (control) control.value = value ?? "";
+    });
+  }
+
+  $("modal").showModal();
+}
+
+$("authForm").onsubmit = async event => {
+  event.preventDefault();
+  const signup = event.submitter?.value === "signup";
+  const buttons = [...$("authForm").querySelectorAll("button")];
+  buttons.forEach(button => { button.disabled = true; });
+  notice(signup ? "Creating account…" : "Signing in…");
+
+  try {
+    const result = await api(
+      signup ? "/auth/v1/signup" : "/auth/v1/token?grant_type=password",
+      "POST",
+      { email: $("email").value.trim(), password: $("password").value }
+    );
+
+    $("password").value = "";
+    if (result.access_token) {
+      setSession(result);
+      await load();
+    } else {
+      notice("Check your email to confirm your account, then sign in.");
+    }
+  } catch (error) {
+    notice(error.message, true);
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+};
+
+$("recordForm").onsubmit = async event => {
+  event.preventDefault();
+  $("save").disabled = true;
+  $("formError").textContent = "";
+
+  const payload = Object.fromEntries(new FormData(event.target));
+  Object.keys(payload).forEach(key => {
+    if (typeof payload[key] === "string") payload[key] = payload[key].trim();
+  });
+
+  if (editingTable === "assignments") payload.due_on ||= null;
+  if (editingTable === "study_sessions") payload.minutes = Number(payload.minutes);
+
+  try {
+    const path = `/rest/v1/${editingTable}`
+      + (editing ? `?id=eq.${encodeURIComponent(editing)}` : "");
+    const changed = await api(path, editing ? "PATCH" : "POST", payload, true);
+
+    if (!changed?.length) throw new Error("No record changed. Refresh and retry.");
+
+    $("modal").close();
+    await load();
+  } catch (error) {
+    $("formError").textContent = error.message;
+    notice(error.message, true);
+  } finally {
+    $("save").disabled = false;
+  }
+};
+
+$("list").onclick = async event => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+
+  const id = button.dataset.id;
+  if (button.dataset.action === "edit") return openEditor(id);
+
+  const table = active;
+  const cascade = table === "courses"
+    ? " Its assignments and study sessions will also be deleted."
+    : table === "assignments"
+      ? " Its study sessions will also be deleted." : "";
+
+  if (!confirm(`Delete this ${singular[table]}?${cascade} This cannot be undone.`)) {
+    return;
+  }
+
+  button.disabled = true;
+  try {
+    const changed = await api(
+      `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+      "DELETE", undefined, true
+    );
+    if (!changed?.length) throw new Error("Record not found. Refresh and retry.");
+    await load();
+  } catch (error) {
+    notice(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+};
+
+$("tabs").onclick = event => {
+  const button = event.target.closest("[data-table]");
+  if (!button) return;
+  active = button.dataset.table;
+  $("search").value = "";
+  render();
+};
+
+$("search").oninput = render;
+$("add").onclick = () => openEditor();
+$("cancel").onclick = () => $("modal").close();
+$("refresh").onclick = () => load().catch(error => notice(error.message, true));
+
+$("signout").onclick = async () => {
+  try {
+    await api("/auth/v1/logout?scope=local", "POST", {}, true);
+  } catch {}
+  setSession(null);
+  notice("Signed out in this tab.");
+};
+
+const fragment = new URLSearchParams(location.hash.slice(1));
+if (fragment.get("access_token") && fragment.get("refresh_token")) {
+  session = {
+    access_token: fragment.get("access_token"),
+    refresh_token: fragment.get("refresh_token"),
+    expires_in: Number(fragment.get("expires_in") || 3600)
+  };
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
+setSession(session);
+
+if (!PUBLISHABLE_KEY.startsWith("sb_publishable_")
+    || PUBLISHABLE_KEY.includes("REPLACE_ME")
+    || PROJECT_URL.includes("YOUR_PROJECT")) {
+  setSession(null);
+  notice("Setup required: add your Supabase project URL and publishable key to index.html.", true);
+  $("authForm").querySelectorAll("button").forEach(button => {
+    button.disabled = true;
+  });
+} else if (session) {
+  load().catch(error => notice(error.message, true));
+}
+</script>
+</body>
+</html>
